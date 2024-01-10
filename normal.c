@@ -66,8 +66,6 @@ coord next_halton_coord(struct coord_halton_generator* gen) {
     return (coord){next_halton(&gen->g1), next_halton(&gen->g2), next_halton(&gen->g3)};
 }
 
-double sq2 = 1.41421;
-
 int main(int argc, char** argv) {
     if(argc < 4) {
         puts("Invalid number of arguments");
@@ -100,14 +98,13 @@ int main(int argc, char** argv) {
         puts("Output file couldn't be opened");
         exit(4);
     }
-
     double s = get_len(&a, &b, &c);
 
+    double sq2 = sqrt(2);
     // analytic
     double v1 = s * s * s * sq2 / 3;
 
     // monte-carlo
-    srand(time(0));
     double d = s * sq2; // diameter
 
     struct base3 bases[16] = {
