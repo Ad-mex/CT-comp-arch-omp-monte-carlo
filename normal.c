@@ -7,19 +7,19 @@
 #define min(a, b) ((a) < (b) ? (a) : (b))
 
 typedef struct {
-    double x, y,z;
+    float x, y,z;
 } coord;
 
 coord get_vec(coord* a, coord* b) {
     return (coord){b->x - a->x, b->y - a->y, b->z - a->z};
 }
 
-double get_len(coord* a, coord* b, coord* c) {
+float get_len(coord* a, coord* b, coord* c) {
     coord ba = get_vec(b, a);
     coord bc = get_vec(b, c);
-    double ba_square_len = ba.x * ba.x + ba.y * ba.y + ba.z * ba.z;
-    double bc_square_len = bc.x * bc.x + bc.y * bc.y + bc.z * bc.z;
-    return sqrt(min(ba_square_len, bc_square_len));
+    float ba_square_len = ba.x * ba.x + ba.y * ba.y + ba.z * ba.z;
+    float bc_square_len = bc.x * bc.x + bc.y * bc.y + bc.z * bc.z;
+    return sqrtf(min(ba_square_len, bc_square_len));
 }
 
 struct halton_generator {
@@ -33,7 +33,7 @@ void init_halton_generator(struct halton_generator* gen, int base) {
     gen->d = 1;
 }
 
-double next_halton(struct halton_generator* gen) {
+float next_halton(struct halton_generator* gen) {
     int x = gen->d - gen->n;
     if(x == 1) {
         gen->n = 1;
@@ -45,7 +45,7 @@ double next_halton(struct halton_generator* gen) {
         }
         gen->n = (gen->base + 1) * y - x; 
     }
-    return gen->n / (double) gen->d;
+    return gen->n / (float) gen->d;
 }
 
 struct coord_halton_generator {
@@ -67,7 +67,8 @@ coord next_halton_coord(struct coord_halton_generator* gen) {
 }
 
 int main(int argc, char** argv) {
-    if(argc < 4) {
+
+    if(argc != 4) {
         puts("Invalid number of arguments");
         exit(1);
     }
@@ -87,7 +88,7 @@ int main(int argc, char** argv) {
     fscanf(input, "%d\n", &n); 
     coord a, b, c;
 
-    fscanf(input, "(%lf %lf %lf)\n(%lf %lf %lf)\n(%lf %lf %lf)",
+    fscanf(input, "(%f %f %f)\n(%f %f %f)\n(%f %f %f)",
         &a.x, &a.y, &a.z,
         &b.x, &b.y, &b.z,
         &c.x, &c.y, &c.z);
@@ -98,16 +99,17 @@ int main(int argc, char** argv) {
         puts("Output file couldn't be opened");
         exit(4);
     }
-    double s = get_len(&a, &b, &c);
+    float s = get_len(&a, &b, &c);
 
-    double sq2 = sqrt(2);
+    float sq2 = sqrt(2);
+
     // analytic
-    double v1 = s * s * s * sq2 / 3;
+    float v1 = s * s * s * sq2 / 3;
 
     // monte-carlo
-    double d = s * sq2; // diameter
+    float d = s * sq2; // diameter
 
-    struct base3 bases[16] = {
+    struct base3 bases[16] = { // different co-prime
         {2, 3, 5},
         {3, 5, 7},
         {2, 5, 7},
@@ -127,6 +129,9 @@ int main(int argc, char** argv) {
     };
 
     int cnt = 0;
+
+    int available = omp_get_num_procs();
+
     double begin = omp_get_wtime();
 
     if(thread_count == -1) {
@@ -139,12 +144,17 @@ int main(int argc, char** argv) {
             }
         }
     } else {
+
+        if(thread_count > available) {
+            thread_count = available;
+        }
+
         #pragma omp parallel num_threads(thread_count)
         {
             struct coord_halton_generator gen;
             init_coord_generator(&gen, bases[omp_get_thread_num()]);
             int local_cnt = 0;
-            #pragma omp for schedule(static)
+            #pragma omp for schedule(dynamic, 100000)
             for(int i = 0; i < n; i++) {
                 coord c = next_halton_coord(&gen);
                 if(c.x + c.y + c.z <= 1) {
@@ -158,7 +168,10 @@ int main(int argc, char** argv) {
 
     fprintf(output, "%g %g\n", v1, d * d * d * cnt / n);
     fclose(output);
-    printf("Time: %lf", omp_get_wtime() - begin);
     
+    printf("Time (%i thread(s)): %g ms\n", 
+        thread_count == -1 ? 0 : thread_count == 0 ? available : thread_count,
+        1000 * (omp_get_wtime() - begin));
+        
     return 0;
 }
