@@ -63,18 +63,18 @@ coord next_coord(struct coord_generator* gen) {
 int main(int argc, char** argv) {
 
     if(argc != 4) {
-        puts("Invalid number of arguments");
+        fprintf(stderr, "Invalid number of arguments\n");
         exit(1);
     }
     int thread_count = atoi(argv[1]);
     if(thread_count < -1) {
-        puts("Invalid number of threads");
+        fprintf(stderr, "Invalid number of threads");
         exit(2);
     }
 
     FILE* input = fopen(argv[2], "r");
     if(input == NULL) {
-        puts("Input file couldn't be opened");
+        fprintf(stderr, "Input file couldn't be opened");
         exit(3);
     }
 
@@ -90,7 +90,7 @@ int main(int argc, char** argv) {
     
     FILE* output = fopen(argv[3], "w");
     if(output == NULL) { 
-        puts("Output file couldn't be opened");
+        fprintf(stderr, "Output file couldn't be opened");
         exit(4);
     }
 
